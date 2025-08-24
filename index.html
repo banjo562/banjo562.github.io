@@ -123,6 +123,7 @@
 
   <script>
     const DEFAULT_IMAGE = "https://i.iheart.com/v3/re/assets.brands/default";
+    const DEFAULT_TITLE = "iHeart Now Playing — Live Metadata";
     const API_URL = id => `https://us.api.iheart.com/api/v3/live-meta/stream/${id}/currentTrackMeta?defaultMetadata=true`;
 
     const els = {
@@ -141,22 +142,36 @@
     let timer = null;
     const POLL_INTERVAL = 5000;
 
+    function updatePageTitle(track, artist) {
+      if (track && artist) {
+        document.title = `${track} - ${artist}`;
+      } else {
+        document.title = DEFAULT_TITLE;
+      }
+    }
+
     function updateInfo(data, id) {
       const track = data?.track || {};
-      els.trackTitle.textContent = track.trackName || "—";
-      els.artistName.textContent = track.artistName || "—";
+      const trackName = track.trackName || "—";
+      const artistName = track.artistName || "—";
+
+      els.trackTitle.textContent = trackName;
+      els.artistName.textContent = artistName;
       els.stationInfo.textContent = `${id} - ${data?.station?.name || "Unknown Station"}`;
 
-      // Explicit
+      // Explicit badge
       els.explicitWarning.style.display = track.explicit ? "block" : "none";
 
-      // Album image with fallback
+      // Album art with fallback
       els.albumImg.src = track.albumImageUrl || DEFAULT_IMAGE;
       els.albumImg.onerror = () => (els.albumImg.src = DEFAULT_IMAGE);
 
-      // Timestamp
+      // Update last updated timestamp
       els.lastUpdated.textContent = new Date().toLocaleTimeString();
       els.statusText.textContent = "Updated";
+
+      // Update browser tab title
+      updatePageTitle(trackName, artistName);
     }
 
     async function fetchTrack(id) {
@@ -164,12 +179,14 @@
         const res = await fetch(API_URL(id), { cache: "no-store" });
         if (!res.ok || res.status === 204) {
           els.statusText.textContent = "No content — likely an ad break.";
+          updatePageTitle(); // reset title during ad breaks
           return;
         }
         const data = await res.json();
         updateInfo(data, id);
       } catch (err) {
         els.statusText.textContent = "Error fetching track info";
+        updatePageTitle();
       }
     }
 
@@ -187,6 +204,7 @@
       els.startBtn.disabled = false;
       els.stopBtn.disabled = true;
       els.statusText.textContent = "Stopped polling.";
+      updatePageTitle();
     }
 
     els.startBtn.addEventListener('click', startPolling);
