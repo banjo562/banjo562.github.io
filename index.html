@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>iHeart Now Playing — Live Metadata</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Roboto Condensed -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #121821;
+      --text: #e7eef7;
+      --muted: #a9b6c7;
+      --accent: #ff2d55;
+      --ok: #00d084;
+      --warn: #ffc400;
+      --err: #ff4d4f;
+      --ring: rgba(255,255,255,0.08);
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: "Roboto Condensed", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 80% -10%, #1a2230 0%, #0b0f14 60%) fixed;
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .app {
+      width: min(100%, 980px);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.08)), var(--panel);
+      border: 1px solid var(--ring);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.03);
+      overflow: hidden;
+    }
+    header {
+      display: flex; gap: 12px; align-items: center; justify-content: space-between;
+      padding: 16px 18px; border-bottom: 1px solid var(--ring);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.1));
+    }
+    .logo {
+      display: flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: .4px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px rgba(0,208,132,0.12); }
+    .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    input[type="number"] {
+      appearance: textfield;
+      background: #0f1520; border: 1px solid var(--ring); color: var(--text);
+      padding: 10px 12px; border-radius: 10px; width: 180px; font-size: 15px;
+      outline: none;
+    }
+    input[type="number"]:focus { border-color: #356dff; box-shadow: 0 0 0 4px rgba(53,109,255,0.12); }
+    button {
+      background: #1b62ff; color: white; border: none; border-radius: 10px;
+      padding: 10px 14px; font-weight: 700; cursor: pointer;
+    }
+    button.secondary { background: #253047; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    main {
+      display: grid; grid-template-columns: 320px 1fr; gap: 18px; padding: 18px;
+    }
+    .artwrap {
+      display: grid; gap: 14px;
+    }
+    .card {
+      background: #0f1520; border: 1px solid var(--ring); border-radius: 12px; overflow: hidden;
+    }
+    .card h3 { margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--ring); font-size: 14px; color: var(--muted); letter-spacing: .3px; }
+    .imgbox { aspect-ratio: 1/1; width: 100%; background: #0b0f14; display: grid; place-items: center; overflow: hidden; }
+    .imgbox img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .meta {
+      background: #0f1520; border: 1px solid var(--ring); border-radius: 12px; padding: 16px;
+      display: grid; gap: 8px; align-content: start;
+    }
+    .line { display: flex; gap: 10px; align-items: baseline; }
+    .label { color: var(--muted); width: 110px; font-size: 14px; }
+    .value { font-size: clamp(18px, 2.4vw, 26px); font-weight: 700; overflow-wrap: anywhere; }
+    .sub { font-size: clamp(14px, 2vw, 18px); color: #cbd6e4; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
+      background: #2a1a1a; color: #ff9a9a; border: 1px solid rgba(255,77,79,.35);
+    }
+    .status {
+      display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 14px;
+      padding: 12px 18px; border-top: 1px solid var(--ring);
+      background: linear-gradient(180deg, rgba(0,0,0,0.05), rgba(255,255,255,0.02));
+    }
+    .blink { animation: blink 1.2s infinite; }
+    @keyframes blink { 50% { opacity: .35 } }
+    .muted { color: var(--muted) }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+    @media (max-width: 860px) {
+      main { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header>
+      <div class="logo" id="liveBadge" title="Polling iHeart live metadata">
+        <span class="dot" id="dot"></span>
+        <span>iHeart Now Playing</span>
+      </div>
+      <div class="controls">
+        <label class="sr-only" for="stationId">iHeart Channel / Station ID</label>
+        <input id="stationId" type="number" inputmode="numeric" placeholder="Enter station ID (e.g. 2501)" />
+        <button id="startBtn" title="Start polling">Start</button>
+        <button id="stopBtn" class="secondary" disabled title="Stop polling">Stop</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="artwrap">
+        <div class="card">
+          <h3>Album Image</h3>
+          <div class="imgbox">
+            <img id="albumImg" alt="Album art" />
+          </div>
+        </div>
+        <div class="card">
+          <h3>Track Image</h3>
+          <div class="imgbox">
+            <img id="trackImg" alt="Track art" />
+          </div>
+        </div>
+      </section>
+
+      <section class="meta">
+        <div class="line">
+          <div class="label">Track</div>
+          <div class="value" id="trackTitle">—</div>
+          <span class="pill" id="explicitPill" style="display:none;" title="Explicit content">EXPLICIT</span>
+        </div>
+        <div class="line">
+          <div class="label">Artist</div>
+          <div class="sub" id="artistName">—</div>
+        </div>
+        <div class="line">
+          <div class="label">Station</div>
+          <div class="sub" id="stationInfo">—</div>
+        </div>
+        <div class="line">
+          <div class="label">Updated</div>
+          <div class="sub" id="lastUpdated">—</div>
+        </div>
+        <div class="line">
+          <div class="label">Notes</div>
+          <div class="sub muted" id="notes">Idle. Enter a station ID and press Start.</div>
+        </div>
+      </section>
+    </main>
+
+    <div class="status">
+      <span class="blink">●</span>
+      <span id="statusText">Waiting…</span>
+    </div>
+  </div>
+
+  <script>
+    // ---------- Config ----------
+    const DEFAULT_ALBUM_FALLBACK = "https://i.iheart.com/v3/re/assets.brands/default";
+    const POLL_BASE_MS = 5000;           // base poll cadence when successful
+    const POLL_MAX_MS  = 20000;          // backoff ceiling
+    const API_URL = (stationId) =>
+      `https://us.api.iheart.com/api/v3/live-meta/stream/${encodeURIComponent(stationId)}/currentTrackMeta?defaultMetadata=true`;
+
+    // ---------- DOM ----------
+    const els = {
+      stationId: document.getElementById('stationId'),
+      startBtn: document.getElementById('startBtn'),
+      stopBtn: document.getElementById('stopBtn'),
+      trackTitle: document.getElementById('trackTitle'),
+      artistName: document.getElementById('artistName'),
+      albumImg: document.getElementById('albumImg'),
+      trackImg: document.getElementById('trackImg'),
+      explicitPill: document.getElementById('explicitPill'),
+      stationInfo: document.getElementById('stationInfo'),
+      lastUpdated: document.getElementById('lastUpdated'),
+      notes: document.getElementById('notes'),
+      statusText: document.getElementById('statusText'),
+      dot: document.getElementById('dot')
+    };
+
+    // Persist last station ID
+    const saved = localStorage.getItem('iheart_station_id');
+    if (saved) els.stationId.value = saved;
+
+    let timer = null;
+    let backoff = POLL_BASE_MS;
+
+    function setStatus(msg) { els.statusText.textContent = msg; }
+    function setNotes(msg)  { els.notes.textContent = msg; }
+
+    function onImgErrorFallback(e) {
+      // If album image fails, set to fallback. If track image fails, hide it.
+      const img = e.currentTarget;
+      if (img === els.albumImg) {
+        if (img.dataset.fellback !== "1") {
+          img.dataset.fellback = "1";
+          img.src = DEFAULT_ALBUM_FALLBACK;
+        }
+      } else {
+        img.style.opacity = "0.25";
+      }
+    }
+
+    els.albumImg.addEventListener('error', onImgErrorFallback);
+    els.trackImg.addEventListener('error', onImgErrorFallback);
+
+    function choose(...candidates) {
+      for (const c of candidates) {
+        if (c !== undefined && c !== null && String(c).trim() !== "") return c;
+      }
+      return undefined;
+    }
+
+    function render(data, stationId) {
+      // Try to normalize a few possible shapes
+      const t = data?.track || data?.song || data;
+      const title = choose(
+        t?.trackName, t?.title, t?.name, data?.title, data?.trackName
+      ) || "—";
+
+      const artist = choose(
+        t?.artistName, t?.artist, data?.artistName, data?.artist
+      ) || "—";
+
+      const albumImage = choose(
+        t?.albumImageUrl, t?.albumImage, data?.albumImageUrl, data?.images?.album, data?.imageUrl
+      );
+
+      const trackImage = choose(
+        t?.imageUrl, t?.trackImageUrl, t?.cover, data?.trackImageUrl
+      );
+
+      const isExplicit = !!choose(
+        t?.explicit, t?.isExplicit, data?.explicit
+      );
+
+      els.trackTitle.textContent = title;
+      els.artistName.textContent = artist;
+      els.explicitPill.style.display = isExplicit ? "inline-flex" : "none";
+
+      // station label
+      els.stationInfo.textContent = `Channel ID ${stationId}`;
+
+      // images
+      els.albumImg.dataset.fellback = "0";
+      els.albumImg.src = albumImage || DEFAULT_ALBUM_FALLBACK;
+      els.trackImg.style.opacity = "1";
+      if (trackImage) {
+        els.trackImg.src = trackImage;
+      } else {
+        // no track art — reuse album art visually dimmed to indicate same
+        els.trackImg.src = albumImage || DEFAULT_ALBUM_FALLBACK;
+        els.trackImg.style.opacity = ".8";
+      }
+
+      // timestamp
+      const ts = new Date();
+      els.lastUpdated.textContent = ts.toLocaleString();
+    }
+
+    async function poll(stationId) {
+      try {
+        const url = API_URL(stationId);
+        setStatus(`Polling ${url}`);
+        const resp = await fetch(url, { cache: "no-store" });
+
+        // iHeart returns 204 during ads/commercial breaks.
+        if (resp.status === 204) {
+          setNotes("Commercial break (204 No Content). Retrying…");
+          backoff = Math.min(Math.round(backoff * 1.5), POLL_MAX_MS);
+          scheduleNext(stationId);
+          return;
+        }
+        if (!resp.ok) {
+          setNotes(`HTTP ${resp.status} ${resp.statusText}. Backing off…`);
+          backoff = Math.min(Math.round(backoff * 1.5), POLL_MAX_MS);
+          scheduleNext(stationId);
+          return;
+        }
+
+        const data = await resp.json();
+        // If payload is empty object, keep gentle backoff
+        if (!data || (Object.keys(data).length === 0)) {
+          setNotes("Empty metadata payload. Retrying…");
+          backoff = Math.min(Math.round(backoff * 1.5), POLL_MAX_MS);
+        } else {
+          render(data, stationId);
+          setNotes("Live metadata updated.");
+          backoff = POLL_BASE_MS; // reset on success
+        }
+      } catch (err) {
+        setNotes(`Network error: ${err?.message || err}. Retrying…`);
+        backoff = Math.min(Math.round(backoff * 1.5), POLL_MAX_MS);
+      } finally {
+        scheduleNext(stationId);
+      }
+    }
+
+    function scheduleNext(stationId) {
+      clearTimeout(timer);
+      // Pulse the green dot faster when polling quickly
+      els.dot.style.boxShadow = backoff <= POLL_BASE_MS ? "0 0 0 4px rgba(0,208,132,0.18)" : "0 0 0 4px rgba(255,196,0,0.18)";
+      els.dot.style.background = backoff <= POLL_BASE_MS ? "var(--ok)" : "var(--warn)";
+      timer = setTimeout(() => poll(stationId), backoff);
+    }
+
+    function start() {
+      const stationId = String(els.stationId.value || "").trim();
+      if (!stationId) {
+        setNotes("Please enter a valid iHeart channel/station ID.");
+        els.stationId.focus();
+        return;
+      }
+      localStorage.setItem('iheart_station_id', stationId);
+      els.startBtn.disabled = true;
+      els.stopBtn.disabled = false;
+      backoff = POLL_BASE_MS;
+      clearTimeout(timer);
+      setNotes("Starting live polling…");
+      poll(stationId);
+    }
+
+    function stop() {
+      clearTimeout(timer);
+      els.startBtn.disabled = false;
+      els.stopBtn.disabled = true;
+      setStatus("Stopped.");
+      setNotes("Polling stopped.");
+      els.dot.style.background = "var(--err)";
+      els.dot.style.boxShadow = "0 0 0 4px rgba(255,77,79,0.18)";
+    }
+
+    els.startBtn.addEventListener('click', start);
+    els.stopBtn.addEventListener('click', stop);
+    els.stationId.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') start();
+    });
+
+    // Auto-start if we already have a station ID saved
+    if (els.stationId.value) start();
+  </script>
+</body>
+</html>
