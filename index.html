@@ -1,228 +1,125 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>iHeart Now Playing — Live Metadata</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Roboto Condensed -->
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
-  <style>
-    body {
-      margin: 0;
-      font-family: "Roboto Condensed", sans-serif;
-      background: #0b0f14;
-      color: #e7eef7;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      padding: 24px;
-    }
-    .app {
-      background: #121821;
-      padding: 20px;
-      border-radius: 12px;
-      width: 95%;
-      max-width: 900px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.4);
-    }
-    h1 {
-      margin: 0 0 20px;
-      font-size: 28px;
-      text-align: center;
-    }
-    .controls {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    input[type="number"], button {
-      font-family: "Roboto Condensed", sans-serif;
-    }
-    input[type="number"] {
-      padding: 8px;
-      font-size: 16px;
-      border: 1px solid #444;
-      border-radius: 6px;
-      background: #0f1520;
-      color: #fff;
-      width: 200px;
-      outline: none;
-    }
-    button {
-      padding: 8px 12px;
-      background: #1b62ff;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-    button:disabled {
-      background: #444;
-      cursor: not-allowed;
-    }
-    .meta {
-      background: #0f1520;
-      padding: 15px;
-      border-radius: 8px;
-      margin-top: 20px;
-    }
-    .meta img {
-      width: 150px;
-      height: 150px;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 1px solid #444;
-      display: block;
-      margin-bottom: 10px;
-    }
-    .explicit {
-      background: #2a1a1a;
-      color: #ff9a9a;
-      padding: 5px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: bold;
-      display: inline-block;
-      margin-top: 5px;
-    }
-    .line {
-      margin: 8px 0;
-    }
-    .label {
-      font-weight: bold;
-      color: #a9b6c7;
-    }
-    .value {
-      font-size: 18px;
-      font-weight: bold;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>- - -</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto Condensed', sans-serif;
+            background: #121212;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        img {
+            width: 250px;
+            height: 250px;
+            object-fit: cover;
+            margin: 15px 0;
+            border-radius: 10px;
+        }
+        .explicit {
+            color: red;
+            font-weight: bold;
+        }
+        .controls {
+            margin-top: 20px;
+        }
+        input, button {
+            font-size: 16px;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+        }
+        input {
+            width: 150px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
 </head>
 <body>
-  <div class="app">
-    <h1>iHeart Now Playing</h1>
+    <h1 id="stationName">Loading station...</h1>
+    <img id="albumImage" src="https://i.iheart.com/v3/re/assets.brands/default" alt="Album Art">
+    <h2 id="trackName">Loading track...</h2>
+    <h3 id="artistName">Loading artist...</h3>
+    <p id="explicitWarning"></p>
+
     <div class="controls">
-      <input id="stationId" type="number" value="1701" />
-      <button id="startBtn">Start</button>
-      <button id="stopBtn" disabled>Stop</button>
+        <input type="number" id="stationInput" placeholder="Enter Station ID" />
+        <button onclick="switchStation()">Switch Station</button>
     </div>
 
-    <div class="meta">
-      <img id="albumImg" src="https://i.iheart.com/v3/re/assets.brands/default" alt="Album Art" />
-      <div class="line"><span class="label">Track:</span> <span class="value" id="trackTitle">—</span></div>
-      <div class="line"><span class="label">Artist:</span> <span class="value" id="artistName">—</span></div>
-      <div class="line"><span class="label">Station:</span> <span class="value" id="stationInfo">—</span></div>
-      <div class="line" id="explicitLine" style="display:none;"><span class="explicit">EXPLICIT</span></div>
-      <div class="line"><span class="label">Last Updated:</span> <span id="lastUpdated">—</span></div>
-      <div class="line"><span class="label">Status:</span> <span id="statusText">Waiting…</span></div>
-    </div>
-  </div>
+    <script>
+        const defaultImg = "https://i.iheart.com/v3/re/assets.brands/default";
+        let stationId = localStorage.getItem("lastStation") || 1701; // Load saved station or default
+        let refreshInterval;
 
-  <script>
-    const DEFAULT_IMAGE = "https://i.iheart.com/v3/re/assets.brands/default";
-    const DEFAULT_TITLE = "iHeart Now Playing — Live Metadata";
-    const API_URL = id => `https://us.api.iheart.com/api/v3/live-meta/stream/${id}/currentTrackMeta?defaultMetadata=true`;
+        async function fetchTrackInfo() {
+            const noCache = `&_=${Date.now()}`;
+            try {
+                const res = await fetch(`https://us.api.iheart.com/api/v3/live-meta/stream/${stationId}?${noCache}`, {
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
+                if (!res.ok) throw new Error("Station not found");
+                const data = await res.json();
 
-    const els = {
-      stationId: document.getElementById('stationId'),
-      startBtn: document.getElementById('startBtn'),
-      stopBtn: document.getElementById('stopBtn'),
-      trackTitle: document.getElementById('trackTitle'),
-      artistName: document.getElementById('artistName'),
-      stationInfo: document.getElementById('stationInfo'),
-      albumImg: document.getElementById('albumImg'),
-      explicitLine: document.getElementById('explicitLine'),
-      lastUpdated: document.getElementById('lastUpdated'),
-      statusText: document.getElementById('statusText')
-    };
+                const station = data?.station?.name || "Unknown Station";
+                const track = data?.track?.title || "-";
+                const artist = data?.track?.artist || "-";
+                const albumImage = data?.track?.albumArt || defaultImg;
+                const explicit = data?.track?.explicit || false;
 
-    let timer = null;
-    const POLL_INTERVAL = 5000;
+                document.getElementById("stationName").textContent = station;
+                document.getElementById("trackName").textContent = track;
+                document.getElementById("artistName").textContent = artist;
 
-    function safeText(val, fallback = "—") {
-      if (typeof val === "string" && val.trim()) return val;
-      return fallback;
-    }
+                const imgElem = document.getElementById("albumImage");
+                imgElem.src = albumImage;
+                imgElem.onerror = () => { imgElem.src = defaultImg; };
 
-    function updatePageTitle(track, artist) {
-      if (track && artist && track !== "—" && artist !== "—") {
-        document.title = `${track} – ${artist}`;
-      } else {
-        document.title = DEFAULT_TITLE;
-      }
-    }
+                document.getElementById("explicitWarning").textContent = explicit ? "Explicit" : "";
 
-    function updateInfo(data, id) {
-      const tr = data?.track || {};
-
-      const trackName = safeText(tr.trackName);
-      const artistName = safeText(tr.artistName);
-      els.trackTitle.textContent = trackName;
-      els.artistName.textContent = artistName;
-
-      const stationName = safeText(data?.station?.name, null);
-      els.stationInfo.textContent = stationName
-        ? `${id} – ${stationName}`
-        : `Channel ID ${id}`;
-
-      els.explicitLine.style.display = tr.explicit ? "block" : "none";
-
-      els.albumImg.src = tr.albumImageUrl || DEFAULT_IMAGE;
-      els.albumImg.onerror = () => (els.albumImg.src = DEFAULT_IMAGE);
-
-      els.lastUpdated.textContent = new Date().toLocaleTimeString();
-      els.statusText.textContent = "Updated";
-
-      updatePageTitle(trackName, artistName);
-    }
-
-    async function fetchTrack(id) {
-      try {
-        const res = await fetch(API_URL(id), { cache: "no-store" });
-        if (res.status === 204) {
-          els.statusText.textContent = "Ad/blank (204 No Content)";
-          updatePageTitle();
-          return;
+                // Update page title
+                document.title = `${track} - ${artist}`;
+            } catch (err) {
+                console.error("Error fetching track info:", err);
+                document.getElementById("stationName").textContent = "Unknown Station";
+                document.getElementById("trackName").textContent = "-";
+                document.getElementById("artistName").textContent = "-";
+                document.getElementById("albumImage").src = defaultImg;
+                document.title = "- - -";
+            }
         }
-        if (!res.ok) {
-          els.statusText.textContent = `Error: ${res.status}`;
-          updatePageTitle();
-          return;
+
+        function switchStation() {
+            const newId = document.getElementById("stationInput").value;
+            if (!newId) return alert("Please enter a station ID!");
+            stationId = newId;
+            localStorage.setItem("lastStation", stationId); // Save station ID
+            fetchTrackInfo();
         }
-        const data = await res.json();
-        updateInfo(data, id);
-      } catch (e) {
-        console.error(e);
-        els.statusText.textContent = "Network error";
-        updatePageTitle();
-      }
-    }
 
-    function startPolling() {
-      const id = els.stationId.value.trim();
-      if (!id) return;
-      els.startBtn.disabled = true;
-      els.stopBtn.disabled = false;
-      fetchTrack(id);
-      timer = setInterval(() => fetchTrack(id), POLL_INTERVAL);
-    }
+        function startAutoRefresh() {
+            clearInterval(refreshInterval);
+            refreshInterval = setInterval(fetchTrackInfo, 5000); // Refresh every 5 seconds
+        }
 
-    function stopPolling() {
-      clearInterval(timer);
-      els.startBtn.disabled = false;
-      els.stopBtn.disabled = true;
-      els.statusText.textContent = "Polling stopped.";
-      updatePageTitle();
-    }
-
-    els.startBtn.addEventListener('click', startPolling);
-    els.stopBtn.addEventListener('click', stopPolling);
-
-    // Auto-start with default 1701
-    startPolling();
-  </script>
+        document.getElementById("stationInput").value = stationId; // Prefill input with saved station
+        fetchTrackInfo();
+        startAutoRefresh();
+    </script>
 </body>
 </html>
