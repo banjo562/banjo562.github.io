@@ -59,20 +59,22 @@
 
     <div class="controls">
         <input type="number" id="stationInput" placeholder="Enter Station ID" />
-        <button onclick="switchStation()">Switch Station</button>
+        <button onclick="switchStation()">Switch Station</button><br>
+        <label for="refreshRate">Refresh Rate (sec): </label>
+        <input type="number" id="refreshRate" min="1" value="5" />
+        <button onclick="updateRefreshRate()">Update Rate</button>
     </div>
 
     <script>
         const defaultImg = "https://i.iheart.com/v3/re/assets.brands/default";
-        let stationId = localStorage.getItem("lastStation") || 1701; // Load saved station or default
+        let stationId = localStorage.getItem("lastStation") || 1701;
         let refreshInterval;
+        let refreshRate = localStorage.getItem("refreshRate") || 5;
 
         async function fetchTrackInfo() {
-            const noCache = `&_=${Date.now()}`;
+            const url = `https://api.iheart.com/api/v3/live-meta/stream/${stationId}?nocache=${Date.now()}`;
             try {
-                const res = await fetch(`https://us.api.iheart.com/api/v3/live-meta/stream/${stationId}?${noCache}`, {
-                    headers: { 'Cache-Control': 'no-cache' }
-                });
+                const res = await fetch(url, { cache: "no-store" });
                 if (!res.ok) throw new Error("Station not found");
                 const data = await res.json();
 
@@ -92,7 +94,6 @@
 
                 document.getElementById("explicitWarning").textContent = explicit ? "Explicit" : "";
 
-                // Update page title
                 document.title = `${track} - ${artist}`;
             } catch (err) {
                 console.error("Error fetching track info:", err);
@@ -108,16 +109,30 @@
             const newId = document.getElementById("stationInput").value;
             if (!newId) return alert("Please enter a station ID!");
             stationId = newId;
-            localStorage.setItem("lastStation", stationId); // Save station ID
+            localStorage.setItem("lastStation", stationId);
             fetchTrackInfo();
+        }
+
+        function updateRefreshRate() {
+            const newRate = parseInt(document.getElementById("refreshRate").value, 10);
+            if (isNaN(newRate) || newRate < 1) {
+                alert("Please enter a valid refresh rate (>= 1 second)");
+                return;
+            }
+            refreshRate = newRate;
+            localStorage.setItem("refreshRate", refreshRate);
+            startAutoRefresh();
         }
 
         function startAutoRefresh() {
             clearInterval(refreshInterval);
-            refreshInterval = setInterval(fetchTrackInfo, 5000); // Refresh every 5 seconds
+            refreshInterval = setInterval(fetchTrackInfo, refreshRate * 1000);
         }
 
-        document.getElementById("stationInput").value = stationId; // Prefill input with saved station
+        // Prefill values
+        document.getElementById("stationInput").value = stationId;
+        document.getElementById("refreshRate").value = refreshRate;
+
         fetchTrackInfo();
         startAutoRefresh();
     </script>
