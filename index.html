@@ -31,14 +31,14 @@
       font-size: 28px;
       text-align: center;
     }
-    input, button {
-      font-family: "Roboto Condensed", sans-serif;
-    }
     .controls {
       display: flex;
       justify-content: center;
       gap: 10px;
       margin-bottom: 20px;
+    }
+    input[type="number"], button {
+      font-family: "Roboto Condensed", sans-serif;
     }
     input[type="number"] {
       padding: 8px;
@@ -78,7 +78,7 @@
       display: block;
       margin-bottom: 10px;
     }
-    .meta .explicit {
+    .explicit {
       background: #2a1a1a;
       color: #ff9a9a;
       padding: 5px 10px;
@@ -114,8 +114,8 @@
       <img id="albumImg" src="https://i.iheart.com/v3/re/assets.brands/default" alt="Album Art" />
       <div class="line"><span class="label">Track:</span> <span class="value" id="trackTitle">—</span></div>
       <div class="line"><span class="label">Artist:</span> <span class="value" id="artistName">—</span></div>
-      <div class="line"><span class="label">Station:</span> <span class="value" id="stationInfo">1701</span></div>
-      <div class="line" id="explicitWarning" style="display:none;"><span class="explicit">EXPLICIT</span></div>
+      <div class="line"><span class="label">Station:</span> <span class="value" id="stationInfo">—</span></div>
+      <div class="line" id="explicitLine" style="display:none;"><span class="explicit">EXPLICIT</span></div>
       <div class="line"><span class="label">Last Updated:</span> <span id="lastUpdated">—</span></div>
       <div class="line"><span class="label">Status:</span> <span id="statusText">Waiting…</span></div>
     </div>
@@ -134,7 +134,7 @@
       artistName: document.getElementById('artistName'),
       stationInfo: document.getElementById('stationInfo'),
       albumImg: document.getElementById('albumImg'),
-      explicitWarning: document.getElementById('explicitWarning'),
+      explicitLine: document.getElementById('explicitLine'),
       lastUpdated: document.getElementById('lastUpdated'),
       statusText: document.getElementById('statusText')
     };
@@ -142,50 +142,61 @@
     let timer = null;
     const POLL_INTERVAL = 5000;
 
+    function safeText(val, fallback = "—") {
+      if (typeof val === "string" && val.trim()) return val;
+      return fallback;
+    }
+
     function updatePageTitle(track, artist) {
-      if (track && artist) {
-        document.title = `${track} - ${artist}`;
+      if (track && artist && track !== "—" && artist !== "—") {
+        document.title = `${track} – ${artist}`;
       } else {
         document.title = DEFAULT_TITLE;
       }
     }
 
     function updateInfo(data, id) {
-      const track = data?.track || {};
-      const trackName = track.trackName || "—";
-      const artistName = track.artistName || "—";
+      const tr = data?.track || {};
 
+      const trackName = safeText(tr.trackName);
+      const artistName = safeText(tr.artistName);
       els.trackTitle.textContent = trackName;
       els.artistName.textContent = artistName;
-      els.stationInfo.textContent = `${id} - ${data?.station?.name || "Unknown Station"}`;
 
-      // Explicit badge
-      els.explicitWarning.style.display = track.explicit ? "block" : "none";
+      const stationName = safeText(data?.station?.name, null);
+      els.stationInfo.textContent = stationName
+        ? `${id} – ${stationName}`
+        : `Channel ID ${id}`;
 
-      // Album art with fallback
-      els.albumImg.src = track.albumImageUrl || DEFAULT_IMAGE;
+      els.explicitLine.style.display = tr.explicit ? "block" : "none";
+
+      els.albumImg.src = tr.albumImageUrl || DEFAULT_IMAGE;
       els.albumImg.onerror = () => (els.albumImg.src = DEFAULT_IMAGE);
 
-      // Update last updated timestamp
       els.lastUpdated.textContent = new Date().toLocaleTimeString();
       els.statusText.textContent = "Updated";
 
-      // Update browser tab title
       updatePageTitle(trackName, artistName);
     }
 
     async function fetchTrack(id) {
       try {
         const res = await fetch(API_URL(id), { cache: "no-store" });
-        if (!res.ok || res.status === 204) {
-          els.statusText.textContent = "No content — likely an ad break.";
-          updatePageTitle(); // reset title during ad breaks
+        if (res.status === 204) {
+          els.statusText.textContent = "Ad/blank (204 No Content)";
+          updatePageTitle();
+          return;
+        }
+        if (!res.ok) {
+          els.statusText.textContent = `Error: ${res.status}`;
+          updatePageTitle();
           return;
         }
         const data = await res.json();
         updateInfo(data, id);
-      } catch (err) {
-        els.statusText.textContent = "Error fetching track info";
+      } catch (e) {
+        console.error(e);
+        els.statusText.textContent = "Network error";
         updatePageTitle();
       }
     }
@@ -203,14 +214,14 @@
       clearInterval(timer);
       els.startBtn.disabled = false;
       els.stopBtn.disabled = true;
-      els.statusText.textContent = "Stopped polling.";
+      els.statusText.textContent = "Polling stopped.";
       updatePageTitle();
     }
 
     els.startBtn.addEventListener('click', startPolling);
     els.stopBtn.addEventListener('click', stopPolling);
 
-    // Start immediately with default ID
+    // Auto-start with default 1701
     startPolling();
   </script>
 </body>
